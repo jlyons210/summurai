@@ -63,7 +63,13 @@ def get_article(url):
         article: Article text
     """
 
-    response = requests.get(url, timeout=10)
+    response = requests.get(
+        url,
+        timeout=10,
+        headers={
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0'
+        })
     soup = BeautifulSoup(response.text, 'html.parser')
 
     title = '# ' + soup.find('h1').get_text()
