@@ -11,7 +11,7 @@ import textwrap
 
 from bs4 import BeautifulSoup
 from openai import OpenAI, OpenAIError
-import requests
+import requests_html
 
 
 def configure(args):
@@ -56,23 +56,20 @@ def configure(args):
 def get_article(url):
     """
     Get the article from the URL
-
+    
     Args:
         url: URL of the article
-
+        
     Returns:
         article: Article text
     """
 
     print('Retrieving article...', file=sys.stderr)
 
-    response = requests.get(
-        url,
-        timeout=10,
-        headers={
-            'User-Agent':
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0'
-        })
+    session = requests_html.HTMLSession()
+    response = session.get(url)
+    response.html.render()
+
     soup = BeautifulSoup(response.text, 'html.parser')
 
     try:
@@ -87,6 +84,8 @@ def get_article(url):
 
     if content.strip() == '':
         print('Could not retrieve article. Is there a paywall?', file=sys.stderr)
+        print(f'response.status_code: {response.status_code}', file=sys.stderr)
+        print(f'response.text: {response.text}', file=sys.stderr)
         exit(1)
 
     article = title + '\n\n' + content
