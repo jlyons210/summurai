@@ -6,6 +6,7 @@ Summarize an article using the OpenAI chat completion API
 
 import argparse
 import shutil
+import sys
 import textwrap
 
 from bs4 import BeautifulSoup
@@ -63,6 +64,8 @@ def get_article(url):
         article: Article text
     """
 
+    print('Retrieving article...', file=sys.stderr)
+
     response = requests.get(
         url,
         timeout=10,
@@ -72,11 +75,19 @@ def get_article(url):
         })
     soup = BeautifulSoup(response.text, 'html.parser')
 
-    title = '# ' + soup.find('h1').get_text()
+    try:
+        title = '# ' + soup.find('h1').get_text()
+
+    except AttributeError:
+        title = ''
 
     content = ''
     for paragraph in soup.find_all('p'):
         content += paragraph.get_text()
+
+    if content.strip() == '':
+        print('Could not retrieve article. Is there a paywall?', file=sys.stderr)
+        exit(1)
 
     article = title + '\n\n' + content
 
@@ -127,6 +138,8 @@ def summarize_article(article, conf):
     Returns:
         summary: Summary of the article
     """
+
+    print('Summarizing article...', file=sys.stderr)
 
     openai = OpenAI(
         api_key=conf['openai_api_key'],
