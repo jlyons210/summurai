@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Summarize an article using the OpenAI chat completion API
+Summarize a webpage using the OpenAI chat completion API
 """
 
 import argparse
@@ -9,14 +9,17 @@ import shutil
 import sys
 import textwrap
 
-from bs4 import BeautifulSoup
 from openai import OpenAI, OpenAIError
-import requests_html
+from requests_html import HTMLSession
+from pyppeteer.errors import TimeoutError as PyppeteerTimeoutError
 
 
 def configure(args):
     """
     Import configuration
+
+    Args:
+        args: Command line arguments
 
     Returns:
         conf: Configuration
@@ -48,49 +51,56 @@ def configure(args):
         exit(1)
 
     if conf['openai_chat_model'] == '':
-        conf['openai_chat_model'] = 'gpt-3.5-turbo'
+        conf['openai_chat_model'] = 'gpt-4-turbo-preview'
 
     return conf
 
 
-def get_article(url):
+def get_webpage(url):
     """
-    Get the article from the URL
+    Get page content from the webpage URL
     
     Args:
-        url: URL of the article
+        url: Webpage URL
         
     Returns:
-        article: Article text
+        page_content: Webpage content
     """
 
-    print('Retrieving article...', file=sys.stderr)
+    print('Retrieving page content...', file=sys.stderr)
 
-    session = requests_html.HTMLSession()
+    session = HTMLSession()
     response = session.get(url)
-    response.html.render()
-
-    soup = BeautifulSoup(response.text, 'html.parser')
 
     try:
-        title = '# ' + soup.find('h1').get_text()
+        response.html.render(timeout=3)
+    except PyppeteerTimeoutError:
+        pass
 
-    except AttributeError:
-        title = ''
+    session.close()
 
-    content = ''
-    for paragraph in soup.find_all('p'):
-        content += paragraph.get_text()
+    page_title = ''
+    for h1 in response.html.find('h1'):
+        if h1.text.strip() != '':
+            page_title = h1.text
+            break
 
-    if content.strip() == '':
-        print('Could not retrieve article. Is there a paywall?', file=sys.stderr)
-        print(f'response.status_code: {response.status_code}', file=sys.stderr)
-        print(f'response.text: {response.text}', file=sys.stderr)
+    page_paragraphs = ''
+    for p in response.html.find('p'):
+        if p.text.strip() != '':
+            page_paragraphs += p.text + '\n\n'
+
+    # if 'captcha' in response.html.html.lower():
+    #     print('Could not retrieve page. Is there a CAPTCHA?', file=sys.stderr)
+    #     exit(1)
+
+    if page_paragraphs.strip() == '':
+        print('Could not retrieve page. Is there a paywall?', file=sys.stderr)
         exit(1)
 
-    article = title + '\n\n' + content
+    page_content = page_title + '\n\n' + page_paragraphs
 
-    return article
+    return page_content
 
 
 def parse_args():
@@ -102,13 +112,12 @@ def parse_args():
     """
 
     parser = argparse.ArgumentParser(
-        description='Summarize an article using the OpenAI chat completion API',
+        description='Summarize a webpage using the OpenAI chat completion API',
     )
-
     parser.add_argument(
         'url',
         type=str,
-        help='URL of the article to summarize',
+        help='URL of the webpage to summarize',
     )
     parser.add_argument(
         '-a', '--api-key',
@@ -122,23 +131,22 @@ def parse_args():
     )
 
     args = parser.parse_args()
-
     return args
 
 
-def summarize_article(article, conf):
+def summarize_webpage(page_content, conf):
     """
-    Summarize the article using the OpenAI chat completion API
+    Summarize the webpage content using the OpenAI chat completion API
 
     Args:
-        article: Article text
-        model: Chat model to use for summarization
+        page_content: Page content
+        conf: Configuration
 
     Returns:
-        summary: Summary of the article
+        summary: Summary of the webpage
     """
 
-    print('Summarizing article...', file=sys.stderr)
+    print('Summarizing page...', file=sys.stderr)
 
     openai = OpenAI(
         api_key=conf['openai_api_key'],
@@ -152,16 +160,16 @@ def summarize_article(article, conf):
             messages=[{
                 'role': 'system',
                 'content': (
-                    'Produce a brief summary and a bullet-point analysis of the following '
-                    'article. Sections should include the article headline, a summary of the '
-                    'article, and a bulleted list of key points. Following the summary, include '
-                    'an "in closing" section that includes some afterthoughts on the content of '
-                    'the article, including sentiment.'
+                    'Produce a summary of the following article. Sections should include the '
+                    'article headline, a brief summary of the article, and a bulleted list of 3-4 '
+                    'key points. Following the summary, include an "in closing" section that '
+                    'includes some afterthoughts on the content of the article, including '
+                    'sentiment and its impact on society.'
                 ),
             },
             {
                 'role': 'user',
-                'content': article,
+                'content': page_content,
             }],
         )
 
@@ -169,7 +177,9 @@ def summarize_article(article, conf):
         print(f'OpenAI error: {e}')
         exit(1)
 
-    return response.choices[0].message.content
+    summary = response.choices[0].message.content
+    return summary
+
 
 def main():
     """
@@ -178,8 +188,8 @@ def main():
 
     args                = parse_args()
     conf                = configure(args)
-    article             = get_article(args.url)
-    summary             = summarize_article(article, conf)
+    page_content        = get_webpage(args.url)
+    summary             = summarize_webpage(page_content, conf)
     terminal_width      = shutil.get_terminal_size().columns
 
     for line in summary.split('\n'):
@@ -188,7 +198,7 @@ def main():
     print(
         '\n__\n'
         f'Generated by summurai -- https://github.com/jlyons210/summurai\n'
-        f'Original article: {args.url}\n'
+        f'Source page URL: {args.url}\n'
         f'Summarized using: {conf["openai_chat_model"]}'
     )
 

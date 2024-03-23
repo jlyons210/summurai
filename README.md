@@ -1,5 +1,7 @@
+![summurai banner](./summurai_banner.png)
+
 # summurai
-Fetch and summarize a webpage using OpenAI chat models.
+Fetches and summarizes a webpage using OpenAI chat models.
 
 ## Demo
 ![screenshot](./summurai_demo.png)
