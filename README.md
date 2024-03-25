@@ -1,7 +1,9 @@
 ![summurai banner](./summurai_banner.png)
 
 # summurai
-Fetches and summarizes a webpage using OpenAI chat models.
+Have you ever wanted a tool to get the [tl;dr](https://www.merriam-webster.com/dictionary/TL%3BDR) of a long webpage or article? How about one better: the ability to discuss and ask questions about the content?
+
+**summurai** fetches and summarizes a webpage using OpenAI chat models. Its interactive mode allows you to chat and ask questions regarding the fetched webpage.
 
 ## Contents
 - [Demo screenshots](#demo-screenshots)
@@ -11,7 +13,7 @@ Fetches and summarizes a webpage using OpenAI chat models.
 
 ## Demo screenshots
 
-### Typical use: one-shot article summary
+### Typical use: one-shot webpage summary
 ![Demo screenshot](./summurai_demo.png)
 
 ### Interactive use: chat about the article
