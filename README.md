@@ -3,17 +3,28 @@
 # summurai
 Fetches and summarizes a webpage using OpenAI chat models.
 
-## Demo
-![screenshot](./summurai_demo.png)
+## Contents
+- [Demo screenshots](#demo-screenshots)
+- [Usage](#usage)
+- [Setup](#setup)
+- [Have fun!](#have-fun)
+
+## Demo screenshots
+
+### Typical use: one-shot article summary
+![Demo screenshot](./summurai_demo.png)
+
+### Interactive use: chat about the article
+![Interactive Demo screenshot](./summurai_demo_interactive.png)
 
 ## Usage
-```sh
-summurai.py [-h] [-a API_KEY] [-m MODEL] url
+```
+summurai.py [-h] [-a API_KEY] [-m MODEL] [-i] url
 
-Summarize an article using the OpenAI chat completion API
+Summarize a webpage using the OpenAI chat completion API
 
 positional arguments:
-  url                   URL of the article to summarize
+  url                   URL of the webpage to summarize
 
 options:
   -h, --help            show this help message and exit
@@ -21,6 +32,7 @@ options:
                         OpenAI API key
   -m MODEL, --model MODEL
                         Chat model to use for summarization
+  -i, --interactive     Interactive mode
 ```
 
 ## Setup
@@ -38,7 +50,7 @@ pip install -r requirements.txt
 cp summurai.conf.template summurai.conf
 ```
 
-### Have fun!
+## Have fun!
 ```sh
 ./summurai.py url_to_summarize
 ```
