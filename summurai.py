@@ -5,6 +5,7 @@ Summarize a webpage using the OpenAI chat completion API
 """
 
 import argparse
+import pypdf
 import shutil
 import sys
 import textwrap
@@ -16,7 +17,9 @@ from pyppeteer.errors import TimeoutError as PyppeteerTimeoutError
 from ansi_colors import AnsiColors
 
 
-def configure(args) -> dict:
+def configure(
+        args: dict,
+    ) -> dict:
     """
     Import configuration
 
@@ -58,7 +61,32 @@ def configure(args) -> dict:
     return conf
 
 
-def get_webpage(url: str) -> str:
+def get_pdf_content(
+        pdf_path: str,
+    ) -> str:
+    """
+    Get text from a PDF file
+
+    Args:
+        pdf_path: Path to the PDF file
+
+    Returns:
+        pdf_text: Text from the PDF file
+    """
+
+    print('Reading PDF...', file=sys.stderr)
+
+    pdf = pypdf.PdfReader(pdf_path)
+    pdf_text = ''
+    for page in pdf.pages:
+        pdf_text += page.extract_text()
+
+    return pdf_text
+
+
+def get_webpage_content(
+        url: str,
+    ) -> str:
     """
     Get webpage content from the URL
     
@@ -107,7 +135,10 @@ def get_webpage(url: str) -> str:
     return webpage_content
 
 
-def interactive_mode(prompt_messages: dict, conf: dict) -> None:
+def interactive_mode(
+        prompt_messages: dict,
+        conf: dict,
+    ) -> None:
     """
     Interactive mode allows for further questions to be asked of the chat model regarding the
     article.
@@ -164,7 +195,7 @@ def interactive_mode(prompt_messages: dict, conf: dict) -> None:
         )
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     """
     Parse command line arguments
 
@@ -176,9 +207,16 @@ def parse_args():
         description='Summarize a webpage using the OpenAI chat completion API',
     )
     parser.add_argument(
-        'url',
+        '-p', '--pdf',
+        type=str,
+        help='Summarize a PDF instead of a URL',
+        required=False,
+    )
+    parser.add_argument(
+        '-u', '--url',
         type=str,
         help='URL of the webpage to summarize',
+        required=False,
     )
     parser.add_argument(
         '-a', '--api-key',
@@ -191,16 +229,31 @@ def parse_args():
         help='Chat model to use for summarization',
     )
     parser.add_argument(
+        '-s', '--skip-summary',
+        action='store_true',
+        help='Skip the summary and go straight to interactive mode',
+    )
+    parser.add_argument(
         '-i', '--interactive',
         action='store_true',
         help='Interactive mode',
     )
 
     args = parser.parse_args()
+
+    if (not args.url and not args.pdf) or (args.url and args.pdf):
+        print(
+            'You must provide either a URL or a PDF file to summarize, but not both.',
+            file=sys.stderr,
+        )
+        exit(1)
+
     return args
 
 
-def print_wrapped(text: str) -> None:
+def print_wrapped(
+        text: str,
+    ) -> None:
     """
     Print text wrapped to the terminal width
 
@@ -213,20 +266,23 @@ def print_wrapped(text: str) -> None:
         print(textwrap.fill(line, width=width))
 
 
-def summarize_webpage(webpage_content, conf):
+def summarize_content(
+        content: str,
+        conf: dict,
+    ) -> str:
     """
-    Summarize the webpage content using the OpenAI chat completion API
+    Summarize the content using the OpenAI chat completion API
 
     Args:
-        webpage_content: Webpage content
+        content: Content to summarize
         conf: Configuration
 
     Returns:
-        summary: Summary of the webpage
+        summary: Summary of the content
         prompt_messages: Prompt message history
     """
 
-    print('Summarizing webpage...', file=sys.stderr)
+    print('Summarizing content...', file=sys.stderr)
 
     openai = OpenAI(
         api_key=conf['openai_api_key'],
@@ -248,7 +304,7 @@ def summarize_webpage(webpage_content, conf):
     },
     {
         'role': 'user',
-        'content': webpage_content,
+        'content': content,
     }]
 
     try:
@@ -270,18 +326,25 @@ def summarize_webpage(webpage_content, conf):
     return summary, prompt_messages
 
 
-def main():
+def main() -> None:
     """
     Main function
     """
+    args = parse_args()
+    conf = configure(args)
 
-    args                            = parse_args()
-    conf                            = configure(args)
-    webpage_content                 = get_webpage(args.url)
-    summary, prompt_messages        = summarize_webpage(webpage_content, conf)
-    print_wrapped(summary)
+    if args.pdf:
+        content = get_pdf_content(args.pdf)
+
+    if args.url:
+        content = get_webpage_content(args.url)
+
+    summary, prompt_messages = summarize_content(content, conf)
 
     if args.interactive:
+        if not args.skip_summary:
+            print_wrapped(summary)
+
         interactive_mode(prompt_messages, conf)
 
     print(
@@ -293,4 +356,9 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+
+    except KeyboardInterrupt:
+        print('\nExiting...')
+        exit(1)
