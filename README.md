@@ -47,7 +47,7 @@ python3 -m venv venv
 
 ### Activate virtual environment
 ```sh
-source venv/bin/activate
+. activate
 ```
 
 ### Install dependencies
