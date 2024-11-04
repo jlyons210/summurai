@@ -76,10 +76,15 @@ def get_pdf_content(
 
     print('Reading PDF...', file=sys.stderr)
 
-    pdf = pypdf.PdfReader(pdf_path)
-    pdf_text = ''
-    for page in pdf.pages:
-        pdf_text += page.extract_text()
+    try:
+        pdf = pypdf.PdfReader(pdf_path)
+        pdf_text = ''
+        for page in pdf.pages:
+            pdf_text += page.extract_text()
+
+    except FileNotFoundError:
+        print(f'Could not find PDF file: {pdf_path}', file=sys.stderr)
+        exit(1)
 
     return pdf_text
 
@@ -209,7 +214,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         '-p', '--pdf',
         type=str,
-        help='Summarize a PDF instead of a URL',
+        help='Path to a PDF file to summarize',
         required=False,
     )
     parser.add_argument(
@@ -246,6 +251,7 @@ def parse_args() -> argparse.Namespace:
             'You must provide either a URL or a PDF file to summarize, but not both.',
             file=sys.stderr,
         )
+        parser.print_usage()
         exit(1)
 
     return args
